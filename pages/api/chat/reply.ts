@@ -94,6 +94,14 @@ export default async function handler(
       finalConversationId = conversationResult.rows[0].id;
     }
 
+    // 確保 finalConversationId 有值
+    if (!finalConversationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to create or find conversation'
+      });
+    }
+
     // 驗證用戶是否有權限回覆此對話
     const conversationQuery = `
       SELECT * FROM conversations
