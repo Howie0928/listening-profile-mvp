@@ -148,7 +148,7 @@ export default async function handler(
         message_id: newMessage.id,
         conversation_id: finalConversationId,
         created_at: newMessage.created_at,
-        response: artistReply?.content
+        response: undefined
       }
     });
 
