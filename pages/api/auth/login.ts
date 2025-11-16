@@ -98,6 +98,7 @@ export default async function handler(
     const token = jwt.sign(
       {
         userId: user.id,
+        id: user.id, // 別名，與 userId 相同
         email: user.email,
         role: user.role || 'fan',
         artistName: user.artist_name

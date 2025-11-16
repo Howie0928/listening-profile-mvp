@@ -106,6 +106,7 @@ export default async function handler(
     const token = jwt.sign(
       {
         userId,
+        id: userId, // 別名，與 userId 相同
         email
       },
       jwtSecret,

@@ -3,6 +3,7 @@ import type { NextApiRequest } from 'next';
 
 export interface JWTPayload {
   userId: string;
+  id?: string; // 別名，與 userId 相同
   email: string;
   role?: string;
   artistName?: string;
