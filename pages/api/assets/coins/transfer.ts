@@ -125,7 +125,7 @@ export default async function handler(
           `INSERT INTO coin_transactions
            (user_id, amount, balance_after, transaction_type, description)
            VALUES ($1, $2, (SELECT balance FROM coin_balances WHERE user_id = $1) + $2, $3, $4)`,
-          [recipient_id, Math.abs(amount), 'gift_received', `來自 ${user.username || user.email} 的禮物`]
+          [recipient_id, Math.abs(amount), 'gift_received', `來自 ${user.email} 的禮物`]
         );
       }
 
