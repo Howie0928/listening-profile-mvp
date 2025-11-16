@@ -1,7 +1,7 @@
 // API: 對消息按讚/取消按讚
 // POST /api/posts/:id/react
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 檢查消息是否存在
-    const postCheck = await query(
+    const postCheck = await db.query(
       'SELECT id, likes_count FROM artist_posts WHERE id = $1',
       [postId]
     );
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 檢查用戶是否已經按過讚
-    const existingReaction = await query(
+    const existingReaction = await db.query(
       'SELECT id FROM post_reactions WHERE user_id = $1 AND post_id = $2',
       [userId, postId]
     );
@@ -70,13 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (existingReaction.rows.length > 0) {
       // 已經按過讚，執行取消按讚
-      await query(
+      await db.query(
         'DELETE FROM post_reactions WHERE user_id = $1 AND post_id = $2',
         [userId, postId]
       );
 
       // 減少按讚數
-      const updateResult = await query(
+      const updateResult = await db.query(
         'UPDATE artist_posts SET likes_count = likes_count - 1 WHERE id = $1 RETURNING likes_count',
         [postId]
       );
@@ -85,14 +85,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       action = 'unliked';
     } else {
       // 尚未按讚，執行按讚
-      await query(
+      await db.query(
         `INSERT INTO post_reactions (user_id, post_id, reaction_type)
          VALUES ($1, $2, $3)`,
         [userId, postId, reaction_type]
       );
 
       // 增加按讚數
-      const updateResult = await query(
+      const updateResult = await db.query(
         'UPDATE artist_posts SET likes_count = likes_count + 1 WHERE id = $1 RETURNING likes_count',
         [postId]
       );

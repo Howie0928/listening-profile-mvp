@@ -1,7 +1,7 @@
 // API: 創建新消息動態
 // POST /api/posts/create
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../lib/db';
+import { db } from '../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 獲取用戶資訊（作為 author_name）
-    const userResult = await query(
+    const userResult = await db.query(
       'SELECT artist_name, email FROM users WHERE id = $1',
       [userId]
     );
@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const authorName = userResult.rows[0].artist_name || userResult.rows[0].email;
 
     // 插入新消息
-    const insertResult = await query(
+    const insertResult = await db.query(
       `INSERT INTO artist_posts (
         title,
         content,

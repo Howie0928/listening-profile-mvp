@@ -1,7 +1,7 @@
 // API: 獲取用戶加入的社群列表
 // GET /api/communities
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../lib/db';
+import { db } from '../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = decoded.userId;
 
     // 獲取用戶加入的所有社群
-    const result = await query(
+    const result = await db.query(
       `SELECT
         c.id,
         c.name,
@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 為每個社群獲取頻道列表
     const communities = await Promise.all(
       result.rows.map(async (community) => {
-        const channels = await query(
+        const channels = await db.query(
           `SELECT id, name, description, channel_type, position
           FROM channels
           WHERE community_id = $1

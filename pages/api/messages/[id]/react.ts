@@ -1,7 +1,7 @@
 // API: 對訊息按讚/取消按讚
 // POST /api/messages/[id]/react
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { reaction_type = 'like', action = 'toggle' } = req.body; // action: 'add', 'remove', 'toggle'
 
     // 檢查訊息是否存在
-    const messageCheck = await query(
+    const messageCheck = await db.query(
       'SELECT id FROM group_messages WHERE id = $1',
       [messageId]
     );
@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 檢查是否已經按過讚
-    const existingReaction = await query(
+    const existingReaction = await db.query(
       'SELECT id FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND reaction_type = $3',
       [messageId, userId, reaction_type]
     );
@@ -52,14 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (action === 'toggle') {
       if (existingReaction.rows.length > 0) {
         // 取消按讚
-        await query(
+        await db.query(
           'DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND reaction_type = $3',
           [messageId, userId, reaction_type]
         );
         result = { action: 'removed', reaction_type };
       } else {
         // 新增按讚
-        await query(
+        await db.query(
           'INSERT INTO message_reactions (message_id, user_id, reaction_type) VALUES ($1, $2, $3)',
           [messageId, userId, reaction_type]
         );
@@ -67,14 +67,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } else if (action === 'add') {
       if (existingReaction.rows.length === 0) {
-        await query(
+        await db.query(
           'INSERT INTO message_reactions (message_id, user_id, reaction_type) VALUES ($1, $2, $3)',
           [messageId, userId, reaction_type]
         );
       }
       result = { action: 'added', reaction_type };
     } else if (action === 'remove') {
-      await query(
+      await db.query(
         'DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND reaction_type = $3',
         [messageId, userId, reaction_type]
       );
@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 獲取更新後的按讚數
-    const likeCountResult = await query(
+    const likeCountResult = await db.query(
       'SELECT like_count FROM group_messages WHERE id = $1',
       [messageId]
     );

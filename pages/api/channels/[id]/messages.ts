@@ -1,7 +1,7 @@
 // API: 獲取頻道訊息 / 發送頻道訊息
 // GET/POST /api/channels/[id]/messages
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       // 獲取頻道訊息
-      const result = await query(
+      const result = await db.query(
         `SELECT
           gm.id,
           gm.content,
@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // 檢查用戶是否為該社群成員
-      const memberCheck = await query(
+      const memberCheck = await db.query(
         `SELECT cm.id
         FROM community_members cm
         JOIN channels ch ON ch.community_id = cm.community_id
@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // 插入訊息
-      const result = await query(
+      const result = await db.query(
         `INSERT INTO group_messages (channel_id, sender_id, content, message_type, metadata)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *`,
@@ -85,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
 
       // 獲取發送者資訊
-      const sender = await query(
+      const sender = await db.query(
         'SELECT id, email, username FROM users WHERE id = $1',
         [userId]
       );

@@ -1,7 +1,7 @@
 // API: 獲取消息動態列表（Feed）
 // GET /api/posts/feed
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../lib/db';
+import { db } from '../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -92,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 查詢總數
-    const countResult = await query(
+    const countResult = await db.query(
       `SELECT COUNT(*) as total FROM artist_posts ${whereClause}`,
       queryParams
     );
@@ -146,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     queryParams.push(limitNum, offset);
 
-    const result = await query(selectQuery, queryParams);
+    const result = await db.query(selectQuery, queryParams);
 
     const posts: Post[] = result.rows.map((row) => ({
       id: row.id,

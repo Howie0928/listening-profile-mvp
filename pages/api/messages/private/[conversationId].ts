@@ -1,7 +1,7 @@
 // API: 獲取單一對話的所有訊息
 // GET /api/messages/private/[conversationId]
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { limit = '50', offset = '0' } = req.query;
 
     // 檢查用戶是否為該對話的參與者
-    const conversationCheck = await query(
+    const conversationCheck = await db.query(
       `SELECT
         c.*,
         CASE
@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const conversation = conversationCheck.rows[0];
 
     // 獲取對話訊息
-    const messagesResult = await query(
+    const messagesResult = await db.query(
       `SELECT
         m.*,
         u.email as sender_email,

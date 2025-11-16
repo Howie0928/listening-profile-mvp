@@ -1,7 +1,7 @@
 // API: 獲取私訊列表（整合好友資訊）
 // GET /api/messages/private
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = decoded.userId;
 
     // 獲取所有私訊對話，包含最後一則訊息和未讀數
-    const result = await query(
+    const result = await db.query(
       `WITH last_messages AS (
         SELECT DISTINCT ON (conversation_id)
           conversation_id,

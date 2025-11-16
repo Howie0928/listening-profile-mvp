@@ -1,7 +1,7 @@
 // API: 加入社群
 // POST /api/communities/[id]/join
 import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../../../lib/db';
+import { db } from '../../../../lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id: communityId } = req.query;
 
     // 檢查社群是否存在
-    const communityResult = await query(
+    const communityResult = await db.query(
       'SELECT id, name FROM communities WHERE id = $1',
       [communityId]
     );
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 加入社群（如果已加入則忽略）
-    await query(
+    await db.query(
       `INSERT INTO community_members (community_id, user_id, role)
       VALUES ($1, $2, 'member')
       ON CONFLICT (community_id, user_id) DO NOTHING`,
