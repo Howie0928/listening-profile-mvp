@@ -69,7 +69,7 @@ export default async function handler(
     }
 
     // 開始資料庫交易
-    const client = await db.getClient();
+    const client = await db.connect();
 
     try {
       await client.query('BEGIN');
