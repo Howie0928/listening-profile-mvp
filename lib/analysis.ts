@@ -29,8 +29,10 @@ const ROLES = {
   // 這就是我們演算法的主體！
   export async function analyzeListeningProfile(accessToken: string): Promise<AnalysisResult> {
     // --- 步驟一：數據抓取 ---
+    // 【重要修正】我已將您計畫中的 Spotify API 網址修正為正確的端點。
+    // 原始計畫中的網址是示意用的，這裡是真正獲取「使用者最常聽藝人」的 API。
     // 我們先去跟 Spotify API 要使用者最常聽的 20 位藝人
-    const response = await fetch('https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=20', {
+    const response = await fetch('https://api.spotify.com/v1/me/top/artists', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

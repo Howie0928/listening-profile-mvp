@@ -1,38 +1,41 @@
+// lib/db.ts
+
 import { Pool } from 'pg';
+import dotenv from 'dotenv';
+
+// 載入環境變數
+dotenv.config({ path: '.env.local' });
 
 // 宣告一個全域變數來存放我們的連線池
-// 這是為了在 Next.js 的開發模式 (hot-reloading) 中，避免重複建立過多的連線池
-declare global {
-  var pgPool: Pool | undefined;
-}
-
 let db: Pool;
 
-// 檢查 process.env.DATABASE_URL 是否存在，如果不存在就拋出錯誤
+// 確保 DATABASE_URL 存在
 if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
+  console.error('DATABASE_URL is not defined in environment variables');
+  console.error('Please check .env.local file');
+  throw new Error('DATABASE_URL is required');
 }
 
-// 防止在開發模式下重複建立連線池
-if (process.env.NODE_ENV === 'development') {
-  if (!global.pgPool) {
-    global.pgPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      // 你的 Supabase 資料庫需要 SSL 連線
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    });
-  }
-  db = global.pgPool;
-} else {
-  // 在生產環境中，直接建立連線池
+// 這種寫法可以確保在開發環境中，不會因為熱重載 (Hot Reload) 而建立多個不必要的連線池
+if (process.env.NODE_ENV === 'production') {
   db = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false,
-    },
   });
+} else {
+  // @ts-ignore
+  if (!global.db) {
+    // @ts-ignore
+    global.db = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+  }
+  // @ts-ignore
+  db = global.db;
 }
 
-export default db;
+// 測試連接
+db.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+export { db };
