@@ -139,7 +139,7 @@ export default async function handler(
     const newMessage = messageResult.rows[0];
 
     // 不再自動回覆，由藝人手動回覆
-    let artistReply = null;
+    let artistReply: { content: string } | null = null;
 
     return res.status(201).json({
       success: true,
