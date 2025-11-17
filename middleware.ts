@@ -10,12 +10,22 @@ export function middleware(request: NextRequest) {
       'http://localhost:3004',
       'http://localhost:3000',
       'http://127.0.0.1:3004',
-      'http://127.0.0.1:3000'
+      'http://127.0.0.1:3000',
+      'http://192.168.1.111:3000',
+      'https://listening-profile-frontend.vercel.app',
     ];
 
     const origin = request.headers.get('origin');
 
-    if (origin && allowedOrigins.includes(origin)) {
+    // 檢查是否為允許的來源（包含 ngrok 和 Vercel 預覽網址）
+    const ngrokPattern = /https:\/\/[a-zA-Z0-9-]+\.ngrok-free\.app/;
+    const vercelPattern = /https:\/\/listening-profile-frontend-[a-zA-Z0-9]+-howue-yus-projects\.vercel\.app/;
+
+    if (
+      (origin && allowedOrigins.includes(origin)) ||
+      (origin && ngrokPattern.test(origin)) ||
+      (origin && vercelPattern.test(origin))
+    ) {
       response.headers.set('Access-Control-Allow-Origin', origin);
     }
 
