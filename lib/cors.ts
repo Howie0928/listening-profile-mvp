@@ -19,9 +19,18 @@ export function setCorsHeaders(req: NextApiRequest, res: NextApiResponse) {
 
   const origin = req.headers.origin;
 
+  console.log('[CORS] Origin:', origin);
+
   // 檢查來源是否在允許清單中，或符合 ngrok/Vercel 網址格式
   if (origin && (allowedOrigins.includes(origin) || ngrokPattern.test(origin) || vercelPattern.test(origin))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
+    console.log('[CORS] Allow-Origin set to:', origin);
+  } else {
+    console.log('[CORS] Origin not allowed:', origin);
+    // 開發環境允許所有來源
+    if (process.env.NODE_ENV !== 'production') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
   }
 
   // 設定其他 CORS 標頭
