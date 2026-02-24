@@ -234,34 +234,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('[Webhook] User update failed:', (dbErr as Error).message);
           }
 
-          // 自動回覆
-          if (replyToken) {
+          // 自動回覆（reply 優先，失敗改 push）
+          {
             const replyText = available === 'yes'
               ? '太好了！🎉 我們會在活動前通知你購票資訊，敬請期待！'
               : '沒關係！💌 我們會持續推送精彩內容給你，下次活動見！';
+            const replyMsgs = [{ type: 'text', text: replyText }];
+            let replied = false;
 
-            try {
-              await fetch('https://api.line.me/v2/bot/message/reply', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-                },
-                body: JSON.stringify({
-                  replyToken,
-                  messages: [{ type: 'text', text: replyText }],
-                }),
-              });
-              console.log(`[Webhook] Replied to ${lineUserId}`);
-              // 記錄到 push_logs
-              await db.query(
-                `INSERT INTO push_logs (line_user_id, message_type, status, sent_at, message_content)
-                 VALUES ($1, 'postback_reply', 'sent', NOW(), $2)`,
-                [lineUserId, '3/5有空回覆: ' + available + ' → ' + replyText.slice(0, 80)]
-              ).catch(() => {});
-            } catch (replyErr) {
-              console.error('[Webhook] Reply failed:', (replyErr as Error).message);
+            if (replyToken) {
+              try {
+                const rRes = await fetch('https://api.line.me/v2/bot/message/reply', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+                  body: JSON.stringify({ replyToken, messages: replyMsgs }),
+                });
+                if (rRes.ok) {
+                  replied = true;
+                  console.log(`[Webhook] Postback reply OK to ${lineUserId}`);
+                } else {
+                  console.error(`[Webhook] Postback reply FAILED ${rRes.status}: ${await rRes.text()}`);
+                }
+              } catch (e) {
+                console.error('[Webhook] Postback reply error:', (e as Error).message);
+              }
             }
+            if (!replied && lineUserId) {
+              try {
+                const pRes = await fetch('https://api.line.me/v2/bot/message/push', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+                  body: JSON.stringify({ to: lineUserId, messages: replyMsgs }),
+                });
+                if (pRes.ok) {
+                  replied = true;
+                  console.log(`[Webhook] Postback push OK to ${lineUserId}`);
+                } else {
+                  console.error(`[Webhook] Postback push FAILED ${pRes.status}: ${await pRes.text()}`);
+                }
+              } catch (e) {
+                console.error('[Webhook] Postback push error:', (e as Error).message);
+              }
+            }
+            await db.query(
+              `INSERT INTO push_logs (line_user_id, message_type, status, sent_at, message_content)
+               VALUES ($1, 'postback_reply', $2, NOW(), $3)`,
+              [lineUserId, replied ? 'sent' : 'failed', '3/5有空回覆: ' + available + ' → ' + replyText.slice(0, 80)]
+            ).catch(() => {});
           }
         }
       }
@@ -303,122 +322,95 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error('[Webhook] Follow event DB insert failed:', (dbErr as Error).message);
         }
 
-        // 3. 回覆歡迎訊息 + 3/5 有空卡片
-        if (replyToken) {
-          try {
-            await fetch('https://api.line.me/v2/bot/message/reply', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-              },
-              body: JSON.stringify({
-                replyToken,
-                messages: [
-                  {
-                    type: 'text',
-                    text: `歡迎加入！🎬\n\n戀綜125 互動式MV 的所有最新消息，都會在這裡推送給你。\n\nJuju 有些話，只能唱給你聽。`,
-                  },
-                  {
-                    type: 'flex',
-                    altText: '你 3/5 有空嗎？',
-                    contents: {
-                      type: 'bubble',
-                      body: {
-                        type: 'box',
-                        layout: 'vertical',
-                        spacing: 'lg',
-                        paddingAll: '20px',
-                        backgroundColor: '#1a1a2e',
-                        contents: [
-                          {
-                            type: 'text',
-                            text: '🎬 戀綜125 — 最終章',
-                            weight: 'bold',
-                            size: 'sm',
-                            color: '#f72585',
-                          },
-                          {
-                            type: 'text',
-                            text: 'Juju 3/5 在女巫店等你',
-                            weight: 'bold',
-                            size: 'lg',
-                            color: '#ffffff',
-                            wrap: true,
-                            margin: 'md',
-                          },
-                          {
-                            type: 'text',
-                            text: '這些故事的最終章，她留在了 3/5 的女巫店。\n你會在場嗎？',
-                            size: 'sm',
-                            color: '#cccccc',
-                            wrap: true,
-                            margin: 'md',
-                          },
-                        ],
-                      },
-                      footer: {
-                        type: 'box',
-                        layout: 'vertical',
-                        spacing: 'md',
-                        paddingAll: '16px',
-                        backgroundColor: '#16213e',
-                        contents: [
-                          {
-                            type: 'text',
-                            text: '你 3/5 有空嗎？',
-                            weight: 'bold',
-                            size: 'md',
-                            color: '#ffffff',
-                            align: 'center',
-                          },
-                          {
-                            type: 'box',
-                            layout: 'horizontal',
-                            spacing: 'md',
-                            margin: 'md',
-                            contents: [
-                              {
-                                type: 'button',
-                                action: {
-                                  type: 'postback',
-                                  label: '✋ 有空！',
-                                  data: 'event=witchshop_0305&answer=yes',
-                                  displayText: '我 3/5 有空！想去女巫店 🙋',
-                                },
-                                style: 'primary',
-                                color: '#f72585',
-                                height: 'sm',
-                              },
-                              {
-                                type: 'button',
-                                action: {
-                                  type: 'postback',
-                                  label: '😢 沒空',
-                                  data: 'event=witchshop_0305&answer=no',
-                                  displayText: '我 3/5 沒空，但想收到後續消息 💌',
-                                },
-                                style: 'secondary',
-                                height: 'sm',
-                              },
-                            ],
-                          },
-                        ],
-                      },
+        // 3. 回覆歡迎訊息 + 3/5 有空卡片（reply 優先，失敗則改 push）
+        {
+          const welcomeMessages = [
+            {
+              type: 'text',
+              text: `歡迎加入！🎬\n\n戀綜125 互動式MV 的所有最新消息，都會在這裡推送給你。\n\nJuju 有些話，只能唱給你聽。`,
+            },
+            {
+              type: 'flex',
+              altText: '你 3/5 有空嗎？',
+              contents: {
+                type: 'bubble',
+                body: {
+                  type: 'box', layout: 'vertical', spacing: 'lg', paddingAll: '20px', backgroundColor: '#1a1a2e',
+                  contents: [
+                    { type: 'text', text: '🎬 戀綜125 — 最終章', weight: 'bold', size: 'sm', color: '#f72585' },
+                    { type: 'text', text: 'Juju 3/5 在女巫店等你', weight: 'bold', size: 'lg', color: '#ffffff', wrap: true, margin: 'md' },
+                    { type: 'text', text: '這些故事的最終章，她留在了 3/5 的女巫店。\n你會在場嗎？', size: 'sm', color: '#cccccc', wrap: true, margin: 'md' },
+                  ],
+                },
+                footer: {
+                  type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px', backgroundColor: '#16213e',
+                  contents: [
+                    { type: 'text', text: '你 3/5 有空嗎？', weight: 'bold', size: 'md', color: '#ffffff', align: 'center' },
+                    {
+                      type: 'box', layout: 'horizontal', spacing: 'md', margin: 'md',
+                      contents: [
+                        { type: 'button', action: { type: 'postback', label: '✋ 有空！', data: 'event=witchshop_0305&answer=yes', displayText: '我 3/5 有空！想去女巫店 🙋' }, style: 'primary', color: '#f72585', height: 'sm' },
+                        { type: 'button', action: { type: 'postback', label: '😢 沒空', data: 'event=witchshop_0305&answer=no', displayText: '我 3/5 沒空，但想收到後續消息 💌' }, style: 'secondary', height: 'sm' },
+                      ],
                     },
-                  },
-                ],
-              }),
-            });
-            console.log(`[Webhook] Welcome + 0305 card sent to ${lineUserId} (${displayName})`);
-            // 記錄到 push_logs
+                  ],
+                },
+              },
+            },
+          ];
+
+          let sent = false;
+          // 先嘗試 reply
+          if (replyToken) {
+            try {
+              const replyRes = await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+                body: JSON.stringify({ replyToken, messages: welcomeMessages }),
+              });
+              if (replyRes.ok) {
+                sent = true;
+                console.log(`[Webhook] Welcome reply OK for ${lineUserId} (${displayName})`);
+              } else {
+                const errBody = await replyRes.text();
+                console.error(`[Webhook] Welcome reply FAILED ${replyRes.status}: ${errBody}`);
+              }
+            } catch (replyErr) {
+              console.error('[Webhook] Welcome reply error:', (replyErr as Error).message);
+            }
+          }
+          // reply 失敗 → 改用 push
+          if (!sent && lineUserId) {
+            try {
+              const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+                body: JSON.stringify({ to: lineUserId, messages: welcomeMessages }),
+              });
+              if (pushRes.ok) {
+                sent = true;
+                console.log(`[Webhook] Welcome push OK for ${lineUserId} (${displayName})`);
+              } else {
+                const errBody = await pushRes.text();
+                console.error(`[Webhook] Welcome push FAILED ${pushRes.status}: ${errBody}`);
+              }
+            } catch (pushErr) {
+              console.error('[Webhook] Welcome push error:', (pushErr as Error).message);
+            }
+          }
+          // 記錄結果
+          if (sent) {
             await db.query(
               `INSERT INTO push_logs (line_user_id, message_type, status, sent_at, message_content)
                VALUES ($1, 'follow_welcome', 'sent', NOW(), $2)`,
               [lineUserId, '歡迎訊息 + 3/5有空Flex卡片']
             ).catch(() => {});
-          } catch (replyErr) {
-            console.error('[Webhook] Follow reply failed:', (replyErr as Error).message);
+          } else {
+            await db.query(
+              `INSERT INTO push_logs (line_user_id, message_type, status, sent_at, message_content)
+               VALUES ($1, 'follow_welcome', 'failed', NOW(), $2)`,
+              [lineUserId, 'reply+push都失敗']
+            ).catch(() => {});
           }
         }
       }
