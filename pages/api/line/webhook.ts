@@ -218,6 +218,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
+        // ===== 購票折扣碼 =====
+        if (params.action === 'get_promo_code' && replyToken) {
+          console.log(`[Webhook] Promo code request from ${lineUserId}`);
+          try {
+            const promoFlex = {
+              type: 'flex' as const,
+              altText: '購票折扣碼：0305JUJU125',
+              contents: {
+                type: 'bubble',
+                body: {
+                  type: 'box', layout: 'vertical', spacing: 'lg', paddingAll: '24px', backgroundColor: '#1a1a2e',
+                  contents: [
+                    { type: 'text', text: '🎫 JUJULING Live 購票', weight: 'bold', size: 'lg', color: '#ff6b8a', align: 'center' },
+                    { type: 'text', text: '3/5（四）女巫店', size: 'sm', color: '#cccccc', align: 'center', margin: 'sm' },
+                    { type: 'separator', margin: 'lg', color: '#333333' },
+                    { type: 'text', text: '折扣碼', size: 'sm', color: '#888888', align: 'center', margin: 'lg' },
+                    { type: 'text', text: '0305JUJU125', weight: 'bold', size: 'xxl', color: '#ffffff', align: 'center', margin: 'sm' },
+                    { type: 'text', text: '可重複使用 ✓', size: 'xs', color: '#4ecdc4', align: 'center', margin: 'md' },
+                    { type: 'text', text: 'ibon 購票無法使用折扣碼', size: 'xs', color: '#ff6b8a', align: 'center', margin: 'sm' },
+                  ],
+                },
+                footer: {
+                  type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: '#16213e',
+                  contents: [
+                    { type: 'button', style: 'primary', color: '#ff6b8a', height: 'md',
+                      action: { type: 'uri', label: '前往購票', uri: 'https://ticketplus.com.tw/activity/eb0b7f04a98b349b4360bdc48052cf90' } },
+                  ],
+                },
+              },
+            };
+            await fetch('https://api.line.me/v2/bot/message/reply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+              body: JSON.stringify({ replyToken, messages: [promoFlex] }),
+            });
+            console.log(`[Webhook] Promo code reply OK to ${lineUserId}`);
+            await db.query(
+              `INSERT INTO push_logs (line_user_id, message_type, status, sent_at, message_content)
+               VALUES ($1, 'promo_code', 'sent', NOW(), $2)`,
+              [lineUserId, '折扣碼卡片: 0305JUJU125 + 購票連結']
+            ).catch(() => {});
+          } catch (promoErr) {
+            console.error('[Webhook] Promo code reply error:', (promoErr as Error).message);
+          }
+        }
+
         // 同步更新 users 表
         if (params.event === 'witchshop_0305' && lineUserId) {
           const available = params.answer === 'yes' ? 'yes' : 'no';
